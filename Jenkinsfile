@@ -34,7 +34,7 @@ pipeline {
 
     post {
         success {
-            echo 'Python application Docker image built successfully.'
+            echo 'java application Docker image built successfully.'
         }
         failure {
             echo 'Docker build or run failed.'
