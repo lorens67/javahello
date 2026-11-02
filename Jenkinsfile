@@ -4,7 +4,7 @@ pipeline {
     environment {
         GIT_REPOSITORY_URL = 'https://github.com/lorens67/javahello.git'
         DOCKER_IMAGE_NAME = '25122004/docker_jenkins_java'
-        IMAGE_TAG = '1.0'
+        IMAGE_TAG = '2.0'
     }
 
     stages {

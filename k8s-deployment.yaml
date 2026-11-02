@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: javahello
-          image: 25122004/docker_jenkins_java:1.0
+          image: 25122004/docker_jenkins_java:2.0
           imagePullPolicy: Always
 ---
 apiVersion: v1
