@@ -2,42 +2,57 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'hello-world-java:latest' // Docker image name
+        GIT_REPOSITORY_URL = 'https://github.com/lorens67/javahello.git'
+        DOCKER_IMAGE_NAME = '25122004/docker_jenkins_java'
+        IMAGE_TAG = '1.0'
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/lorens67/javahello.git'
-            }
-        }
-
-        stage('Docker Build') {
+        stage('Clone Repository') {
             steps {
                 script {
-                    // Check if Dockerfile exists
-                    if (fileExists('Dockerfile')) {
-                        sh "docker build -t ${env.DOCKER_IMAGE} ."
-                    } else {
-                        error "Dockerfile not found in the workspace. Please create one for your Python application."
+                    try {
+                        git branch: 'main', url: GIT_REPOSITORY_URL
+                    } catch (Exception e) {
+                        echo "Failed to clone repository: ${e.message}"
+                        error "Failed to clone repository"
                     }
                 }
             }
         }
 
-        stage('Docker Run (Optional)') {
+        stage('Build Docker Image') {
             steps {
-                sh "docker run --rm ${env.DOCKER_IMAGE}"
+                script {
+                    try {
+                        docker.build("${DOCKER_IMAGE_NAME}:${IMAGE_TAG}")
+                    } catch (Exception e) {
+                        echo "Failed to build Docker image: ${e.message}"
+                        error "Failed to build Docker image"
+                    }
+                }
             }
         }
-    }
 
-    post {
-        success {
-            echo 'java application Docker image built successfully.'
-        }
-        failure {
-            echo 'Docker build or run failed.'
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    try {
+                        withCredentials([usernamePassword(credentialsId: 'my-docker-hub-credentials-id', 
+                                                         usernameVariable: 'DOCKER_USERNAME', 
+                                                         passwordVariable: 'DOCKER_PASSWORD')]) {
+                            // Explicit login before push
+                            sh """
+                            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                            docker push ${DOCKER_IMAGE_NAME}:${IMAGE_TAG}
+                            """
+                        }
+                    } catch (Exception e) {
+                        echo "Failed to push Docker image to registry: ${e.message}"
+                        error "Failed to push Docker image"
+                    }
+                }
+            }
         }
     }
 }
