@@ -38,18 +38,61 @@ pipeline {
             steps {
                 script {
                     try {
-                        withCredentials([usernamePassword(credentialsId: 'my-docker-hub-credentials-id', 
-                                                         usernameVariable: 'DOCKER_USERNAME', 
+                        withCredentials([usernamePassword(credentialsId: 'my-docker-hub-credentials-id',
+                                                         usernameVariable: 'DOCKER_USERNAME',
                                                          passwordVariable: 'DOCKER_PASSWORD')]) {
-                            // Explicit login before push
-                            sh """
+                            sh '''
                             echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                            docker push ${DOCKER_IMAGE_NAME}:${IMAGE_TAG}
-                            """
+                            '''
+                            sh "docker push ${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
                         }
                     } catch (Exception e) {
                         echo "Failed to push Docker image to registry: ${e.message}"
                         error "Failed to push Docker image"
+                    }
+                }
+            }
+        }
+
+        stage('Pull Image from DockerHub') {
+            steps {
+                script {
+                    try {
+                        sh "docker pull ${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
+                    } catch (Exception e) {
+                        echo "Failed to pull Docker image: ${e.message}"
+                        error "Failed to pull Docker image"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    try {
+                        sh 'kubectl apply -f k8s-deployment.yaml'
+                        sh 'kubectl rollout restart deployment/javahello'
+                    } catch (Exception e) {
+                        echo "Failed to deploy to Kubernetes: ${e.message}"
+                        error "Failed to deploy to Kubernetes"
+                    }
+                }
+            }
+        }
+
+        stage('Verify Pod Running') {
+            steps {
+                script {
+                    try {
+                        sh 'kubectl rollout status deployment/javahello --timeout=120s'
+                        sh 'kubectl wait --for=condition=Ready pod -l app=javahello --timeout=60s'
+                        sh 'kubectl get pods -l app=javahello -o wide'
+                        sh 'kubectl get svc javahello-service'
+                        sh 'kubectl logs -l app=javahello --tail=5'
+                    } catch (Exception e) {
+                        sh 'kubectl describe pods -l app=javahello || true'
+                        error "Pod verification failed: ${e.message}"
                     }
                 }
             }

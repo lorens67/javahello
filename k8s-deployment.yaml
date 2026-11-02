@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: javahello
+  labels:
+    app: javahello
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: javahello
+  template:
+    metadata:
+      labels:
+        app: javahello
+    spec:
+      containers:
+        - name: javahello
+          image: 25122004/docker_jenkins_java:1.0
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: javahello-service
+spec:
+  type: NodePort
+  selector:
+    app: javahello
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30080
